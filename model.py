@@ -7,9 +7,10 @@ from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from sklearn.metrics import mean_squared_error
 import os
 from datetime import datetime
+import joblib  # Import joblib for model saving
 
 # Define the path for logging (MLflow local directory)
-#mlflow.set_tracking_uri('http://127.0.0.1:5000/')  # This stores the logs and models in a local directory called 'mlruns'
+# mlflow.set_tracking_uri('http://127.0.0.1:5000/')  # This stores the logs and models in a local directory called 'mlruns'
 
 dataset_name = 'california_housing.csv'  # dataset's name for logging
 
@@ -19,9 +20,6 @@ df = pd.read_csv(dataset_name)
 # Assuming the target variable is 'median_house_value' and the rest are features
 X = df.drop(columns=['target'])  # Drop the target column
 y = df['target']  # Target variable
-
-
-
 
 # Split the data into training and testing sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -114,6 +112,11 @@ with mlflow.start_run(run_name=run_name):
         # Log the best model itself
         mlflow.sklearn.log_model(best_model, model_name)
 
+        # Save the trained model using joblib
+        model_filename = f"{model_name.replace(' ', '_')}_model.pkl"
+        joblib.dump(best_model, model_filename)  # Save model to a file
+
         print(f"Best Params: {best_params}")
         print(f"Best Score (CV): {best_score}")
         print(f"Test MSE: {mse}")
+        print(f"Saved model as: {model_filename}")
