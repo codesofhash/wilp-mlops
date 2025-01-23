@@ -11,17 +11,19 @@ import joblib  # Import joblib for model saving
 # Define the path for logging (MLflow local directory)
 # mlflow.set_tracking_uri('http://127.0.0.1:5000/')  # This stores the logs and models in a local directory called 'mlruns'
 
-dataset_name = 'california_housing.csv'  # dataset's name for logging
+dataset_name = "california_housing.csv"  # dataset's name for logging
 
 # Load dataset
 df = pd.read_csv(dataset_name)
 
 # Assuming the target variable is 'median_house_value' and the rest are features
-X = df.drop(columns=['target'])  # Drop the target column
-y = df['target']  # Target variable
+X = df.drop(columns=["target"])  # Drop the target column
+y = df["target"]  # Target variable
 
 # Split the data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
 
 # Define models and hyperparameter grids
 models = {
@@ -29,31 +31,27 @@ models = {
     "Ridge Regression": Ridge(),
     "Lasso Regression": Lasso(),
     "Gradient Boosting Regressor": GradientBoostingRegressor(),
-    "Random Forest Regressor": RandomForestRegressor(random_state=42)
+    "Random Forest Regressor": RandomForestRegressor(random_state=42),
 }
 
 param_grids = {
     "Linear Regression": {},
-    "Ridge Regression": {
-        'alpha': [0.1, 1, 10, 100]
-    },
-    "Lasso Regression": {
-        'alpha': [0.1, 1, 10, 100]
-    },
+    "Ridge Regression": {"alpha": [0.1, 1, 10, 100]},
+    "Lasso Regression": {"alpha": [0.1, 1, 10, 100]},
     "Gradient Boosting Regressor": {
-        'n_estimators': [100, 200],
-        'learning_rate': [0.01, 0.1],
-        'max_depth': [3, 5, 7],
+        "n_estimators": [100, 200],
+        "learning_rate": [0.01, 0.1],
+        "max_depth": [3, 5, 7],
     },
     "Random Forest Regressor": {
-        'n_estimators': [50, 100, 200],
-        'max_depth': [10, 20, 30],
-        'min_samples_split': [2, 5, 10],
-    }
+        "n_estimators": [50, 100, 200],
+        "max_depth": [10, 20, 30],
+        "min_samples_split": [2, 5, 10],
+    },
 }
 
 # Set the experiment
-experiment_name = 'wilp-mlops'
+experiment_name = "wilp-mlops"
 
 # Check if the experiment exists and is active, otherwise create a new one or restore it
 existing_experiment = mlflow.get_experiment_by_name(experiment_name)
@@ -75,24 +73,28 @@ run_name = f"run_{timestamp}"
 # Start an MLflow run with a custom name
 with mlflow.start_run(run_name=run_name):
     # Log the dataset used in both the tags and parameters
-    mlflow.set_tag("dataset_used", dataset_name)  # Log as a tag (shows in Runs Dashboard)
+    mlflow.set_tag(
+        "dataset_used", dataset_name
+    )  # Log as a tag (shows in Runs Dashboard)
 
     # You can also log the dataset path as a parameter
-    mlflow.log_param("dataset_used", dataset_name)  # Log as a parameter (shows in Overview > Details)
-    
+    mlflow.log_param(
+        "dataset_used", dataset_name
+    )  # Log as a parameter (shows in Overview > Details)
+
     for model_name, model in models.items():
         print(f"Training model: {model_name}")
-        
+
         # Get the parameter grid for the model
         param_grid = param_grids[model_name]
 
         # If no hyperparameters to tune (e.g., Linear Regression), perform GridSearchCV with default settings
         grid_search = GridSearchCV(
-            estimator=model, 
-            param_grid=param_grid, 
-            cv=5, 
-            n_jobs=-1, 
-            scoring='neg_mean_squared_error'
+            estimator=model,
+            param_grid=param_grid,
+            cv=5,
+            n_jobs=-1,
+            scoring="neg_mean_squared_error",
         )
 
         # Fit the model
@@ -100,7 +102,9 @@ with mlflow.start_run(run_name=run_name):
 
         # Get the best model and its parameters
         best_model = grid_search.best_estimator_
-        best_params = grid_search.best_params_ if param_grid else "N/A"  # For Linear Regression, no parameters to tune
+        best_params = (
+            grid_search.best_params_ if param_grid else "N/A"
+        )  # For Linear Regression, no parameters to tune
         best_score = grid_search.best_score_
 
         # Log the best model, parameters, and score to MLflow
@@ -125,4 +129,3 @@ with mlflow.start_run(run_name=run_name):
         print(f"Best Score (CV): {best_score}")
         print(f"Test MSE: {mse}")
         print(f"Saved model as: {model_filename}")
-
