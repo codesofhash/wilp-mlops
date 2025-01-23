@@ -46,7 +46,7 @@ param_grids = {
         'max_depth': [3, 5, 7],
     },
     "Random Forest Regressor": {
-        'n_estimators': [50,100, 200],
+        'n_estimators': [50, 100, 200],
         'max_depth': [10, 20, 30],
         'min_samples_split': [2, 5, 10],
     }
@@ -78,7 +78,7 @@ with mlflow.start_run(run_name=run_name):
     mlflow.set_tag("dataset_used", dataset_name)  # Log as a tag (shows in Runs Dashboard)
 
     # You can also log the dataset path as a parameter
-    mlflow.log_param("dataset_used",dataset_name)  # Log as a parameter (shows in Overview > Details)
+    mlflow.log_param("dataset_used", dataset_name)  # Log as a parameter (shows in Overview > Details)
     
     for model_name, model in models.items():
         print(f"Training model: {model_name}")
@@ -87,7 +87,13 @@ with mlflow.start_run(run_name=run_name):
         param_grid = param_grids[model_name]
 
         # If no hyperparameters to tune (e.g., Linear Regression), perform GridSearchCV with default settings
-        grid_search = GridSearchCV(estimator=model, param_grid=param_grid, cv=5, n_jobs=-1, scoring='neg_mean_squared_error')
+        grid_search = GridSearchCV(
+            estimator=model, 
+            param_grid=param_grid, 
+            cv=5, 
+            n_jobs=-1, 
+            scoring='neg_mean_squared_error'
+        )
 
         # Fit the model
         grid_search.fit(X_train, y_train)
