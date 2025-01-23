@@ -124,7 +124,6 @@ with mlflow.start_run(run_name=run_name):
         # Save the trained model using joblib
         model_filename = f"{model_name.replace(' ', '_')}_model.pkl"
         joblib.dump(best_model, model_filename)  # Save model to a file
-
         print(f"Best Params: {best_params}")
         print(f"Best Score (CV): {best_score}")
         print(f"Test MSE: {mse}")
