@@ -9,7 +9,7 @@ from datetime import datetime
 import joblib  # Import joblib for model saving
 
 # Define the path for logging (MLflow local directory)
-# mlflow.set_tracking_uri('http://127.0.0.1:5000/')  # This stores the logs and models in a local directory called 'mlruns'
+# mlflow.set_tracking_uri('http://127.0.0.1:5000/') 
 
 dataset_name = "california_housing.csv"  # dataset's name for logging
 
