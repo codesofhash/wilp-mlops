@@ -67,7 +67,7 @@ jobs:
           # Optionally save the model using joblib or pickle
           # joblib.dump(model, 'model.pkl')
       - name: Upload model to artifact storage
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: model
           path: model.pkl  # Path to the saved model file
