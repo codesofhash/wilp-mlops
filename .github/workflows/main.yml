@@ -1,0 +1,78 @@
+name: MLOPs_Project_WILP
+
+on:
+  push:
+    branches:
+      - main      # Triggers on push to the 'main' branch
+  pull_request:
+    branches:
+      - main      # Triggers on pull requests targeting the 'main' branch
+
+jobs:
+  lint:      # Job to lint the code using flake8
+    runs-on: ubuntu-latest   # Runs on the latest Ubuntu image
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2   # Checks out the code
+      - name: Set up Python
+        uses: actions/setup-python@v2   # Sets up Python 3.8
+        with:
+          python-version: '3.8'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt  # Installs dependencies from requirements.txt
+      - name: Lint with flake8
+        run: |
+          pip install flake8   # Installs flake8
+          flake8 --max-line-length=120 --verbose .   # Runs flake8 on the current directory
+
+  test:      # Job to run tests using unittest
+    runs-on: ubuntu-latest   # Runs on the latest Ubuntu image
+    needs: lint   # This job depends on the 'lint' job completing successfully
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2   # Checks out the code
+      - name: Set up Python
+        uses: actions/setup-python@v2   # Sets up Python 3.8
+        with:
+          python-version: '3.8'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt  # Installs dependencies from requirements.txt
+      - name: Run tests
+        run: |
+          python -m unittest discover   # Runs tests using unittest
+
+  deploy:    # Job to train the model and deploy it
+    runs-on: ubuntu-latest   # Runs on the latest Ubuntu image
+    needs: test   # This job depends on the 'test' job completing successfully
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2   # Checks out the code
+        with:
+          submodules: true   # Ensures submodules are checked out, if any
+  
+      - name: Set up Python
+        uses: actions/setup-python@v2   # Sets up Python 3.8
+        with:
+          python-version: '3.8'
+  
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt  # Installs dependencies from requirements.txt
+  
+      - name: Train the model
+        run: |
+          python model.py  # Runs the model training script (model.py)
+          # Optionally save the model using joblib or pickle
+          # joblib.dump(model, 'model.pkl')
+  
+      - name: Upload model to artifact storage
+        uses: actions/upload-artifact@v3
+        with:
+          name: model
+          path: model.pkl  # Path to the saved model file
+
