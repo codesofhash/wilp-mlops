@@ -29,7 +29,7 @@ jobs:
 
   testing:      # Job to run tests using unittest
     runs-on: ubuntu-latest   # Runs on the latest Ubuntu image
-    needs: lint   # This job depends on the 'linting' job completing successfully
+    needs: lint   # This job depends on the 'lint' job completing successfully
     steps:
       - name: Checkout code
         uses: actions/checkout@v2   # Checks out the code
@@ -47,7 +47,7 @@ jobs:
 
   deploying:    # Job to train the model and deploy it
     runs-on: ubuntu-latest   # Runs on the latest Ubuntu image
-    needs: test   # This job depends on the 'testing' job completing successfully
+    needs: test   # This job depends on the 'test' job completing successfully
     steps:
       - name: Checkout code
         uses: actions/checkout@v2   # Checks out the code
