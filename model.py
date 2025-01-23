@@ -1,10 +1,8 @@
 import pandas as pd
 import mlflow
 import mlflow.sklearn
-from sklearn.datasets import fetch_california_housing
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.linear_model import LinearRegression, Ridge, Lasso
-from sklearn.svm import SVR
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from sklearn.metrics import mean_squared_error
 import os
