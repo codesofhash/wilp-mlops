@@ -14,6 +14,7 @@ model_version = 1
 model_uri = f"models:/{model_name}/{model_version}"
 model = mlflow.sklearn.load_model(model_uri)
 
+
 # Define a route for prediction using POST method (same as before)
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -30,6 +31,7 @@ def predict():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 # Define a new route for testing via GET request
 @app.route('/predict_get', methods=['GET'])
@@ -50,6 +52,7 @@ def predict_get():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5001)
