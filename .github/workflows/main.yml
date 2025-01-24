@@ -3,10 +3,10 @@ name: MLOPs_Project_WILP
 on:
   push:
     branches:
-      - main      # Triggers on push to the 'main' branch
+      - main  # Triggers on push to the 'main' branch
   pull_request:
     branches:
-      - main      # Triggers on pull requests targeting the 'main' branch
+      - main  # Triggers on pull requests targeting the 'main' branch
 
 jobs:
   linting:      # Job to lint the code using flake8
@@ -71,3 +71,31 @@ jobs:
         with:
           name: model
           path: model.pkl  # Path to the saved model file
+
+  dockerize:    # Job to build and run Docker container
+    runs-on: ubuntu-latest  # Runs on the latest Ubuntu image
+    needs: deploying  # This job depends on the 'deploying' job completing successfully
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2   # Checks out the code
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2  # Sets up Docker Buildx
+      - name: Cache Docker layers
+        uses: actions/cache@v2
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+      - name: Build Docker image
+        run: |
+          docker build -t flask-ml-app .  # Builds the Docker image using the Dockerfile in the repo
+      - name: Run Docker container
+        run: |
+          docker run -d -p 5001:5001 flask-ml-app  # Run the container and map port 5001
+          sleep 10  # Wait for the Flask app to start
+          curl -f http://localhost:5001/predict_get?features=1.2&features=3.4&features=5.6&features=7.8&features=9.0&features=10.1&features=12.3&features=15.6  # Test the Flask API
+      - name: Stop and remove Docker container
+        run: |
+          docker ps -q --filter "ancestor=flask-ml-app" | xargs docker stop
+          docker ps -aq --filter "ancestor=flask-ml-app" | xargs docker rm

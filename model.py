@@ -6,26 +6,23 @@ from sklearn.linear_model import LinearRegression, Ridge, Lasso
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from sklearn.metrics import mean_squared_error
 from datetime import datetime
-import joblib  # Import joblib for model saving
+from mlflow.models import infer_signature
 
-# Define the path for logging (MLflow local directory)
-# mlflow.set_tracking_uri('http://127.0.0.1:5000/')
+# Set the MLflow tracking URI
+mlflow.set_tracking_uri('http://127.0.0.1:5000/')
 
-dataset_name = "california_housing.csv"  # dataset's name for logging
-
-# Load dataset
+# Load the dataset
+dataset_name = "california_housing.csv"
 df = pd.read_csv(dataset_name)
 
-# Assuming the target variable is 'median_house_value' and the rest are features
-X = df.drop(columns=["target"])  # Drop the target column
-y = df["target"]  # Target variable
+# Split the data into features and target variable
+X = df.drop(columns=["target"])
+y = df["target"]
 
 # Split the data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42
-)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Define models and hyperparameter grids
+# Define the models and hyperparameter grids
 models = {
     "Linear Regression": LinearRegression(),
     "Ridge Regression": Ridge(),
@@ -53,34 +50,26 @@ param_grids = {
 # Set the experiment
 experiment_name = "wilp-mlops"
 
-# Check if the experiment exists and is active, otherwise create a new one or restore it
+# Check if the experiment exists, otherwise create a new one
 existing_experiment = mlflow.get_experiment_by_name(experiment_name)
 
 if existing_experiment is None:
-    # Experiment doesn't exist, create a new one
     mlflow.create_experiment(experiment_name)
-elif existing_experiment.lifecycle_stage == "deleted":
-    # If the experiment was deleted, recreate it
-    mlflow.delete_experiment(existing_experiment.experiment_id)
-    mlflow.create_experiment(experiment_name)
+else:
+    mlflow.set_experiment(experiment_name)
 
-mlflow.set_experiment(experiment_name)
-
-# Generate a timestamped run name
+# Create a timestamped run name
 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 run_name = f"run_{timestamp}"
 
-# Start an MLflow run with a custom name
+# Start an MLflow run
 with mlflow.start_run(run_name=run_name):
-    # Log the dataset used in both the tags and parameters
-    mlflow.set_tag(
-        "dataset_used", dataset_name
-    )  # Log as a tag (shows in Runs Dashboard)
+    mlflow.set_tag("dataset_used", dataset_name)  # Log the dataset used as a tag
+    mlflow.log_param("dataset_used", dataset_name)  # Log dataset as a parameter
 
-    # You can also log the dataset path as a parameter
-    mlflow.log_param(
-        "dataset_used", dataset_name
-    )  # Log as a parameter (shows in Overview > Details)
+    best_model_name = None
+    best_model = None
+    best_mse = float("inf")
 
     for model_name, model in models.items():
         print(f"Training model: {model_name}")
@@ -88,7 +77,7 @@ with mlflow.start_run(run_name=run_name):
         # Get the parameter grid for the model
         param_grid = param_grids[model_name]
 
-        # If no hyperparameters to tune (e.g., Linear Regression), perform GridSearchCV with default settings
+        # Perform GridSearchCV with cross-validation
         grid_search = GridSearchCV(
             estimator=model,
             param_grid=param_grid,
@@ -101,30 +90,51 @@ with mlflow.start_run(run_name=run_name):
         grid_search.fit(X_train, y_train)
 
         # Get the best model and its parameters
-        best_model = grid_search.best_estimator_
-        best_params = (
-            grid_search.best_params_ if param_grid else "N/A"
-        )  # For Linear Regression, no parameters to tune
+        best_model_temp = grid_search.best_estimator_
+        best_params = grid_search.best_params_ if param_grid else "N/A"
         best_score = grid_search.best_score_
 
-        # Log the best model, parameters, and score to MLflow
+        # Log the best model's parameters and score
         mlflow.log_param(f"{model_name}_best_params", str(best_params))
         mlflow.log_metric(f"{model_name}_best_score", best_score)
 
         # Evaluate the best model on the test set
-        predictions = best_model.predict(X_test)
+        predictions = best_model_temp.predict(X_test)
         mse = mean_squared_error(y_test, predictions)
 
         # Log the test MSE
         mlflow.log_metric(f"{model_name}_test_mse", mse)
 
-        # Log the best model itself
-        mlflow.sklearn.log_model(best_model, model_name)
+        # Track the best performing model
+        if mse < best_mse:
+            best_model_name = model_name
+            best_model = best_model_temp
+            best_mse = mse
 
-        # Save the trained model using joblib
-        model_filename = f"{model_name.replace(' ', '_')}_model.pkl"
-        joblib.dump(best_model, model_filename)  # Save model to a file
-        print(f"Best Params: {best_params}")
-        print(f"Best Score (CV): {best_score}")
-        print(f"Test MSE: {mse}")
-        print(f"Saved model as: {model_filename}")
+    print(f"Best Model: {best_model_name} with MSE: {best_mse}")
+
+    # Log the best model with MLflow, including input example and signature
+    input_example = X_train.iloc[0].to_dict()  # Use the first row as an example for input
+    signature = infer_signature(X_train, y_train)  # Automatically infer the signature
+
+    # Log the best model with MLflow, including input example and signature
+    mlflow.sklearn.log_model(best_model, "model", input_example=input_example, signature=signature)
+
+    # Register the best model
+    model_uri = f"runs:/{mlflow.active_run().info.run_id}/model"
+    print(f"Registering {best_model_name} model...")
+
+    # Register the model in the Model Registry
+    mlflow.register_model(model_uri, best_model_name)
+
+    # Wait for the model version to be created
+    client = mlflow.tracking.MlflowClient()
+    latest_version = client.get_latest_versions(best_model_name, stages=["None"])[0].version
+
+    # Transition the model to production
+    print(f"Model {best_model_name} with version {latest_version} moved to Production")
+    client.transition_model_version_stage(
+        name=best_model_name,
+        version=latest_version,
+        stage="Production",
+    )
