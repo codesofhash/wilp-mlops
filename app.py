@@ -1,17 +1,10 @@
-import mlflow
 import mlflow.sklearn
 from flask import Flask, request, jsonify
 
 # Initialize Flask app
 app = Flask(__name__)
 
-# Set the tracking URI (assuming the MLflow server is running locally)
-mlflow.set_tracking_uri("http://127.0.0.1:5000/")
-
-# Load the model (replace "Gradient Boosting Regressor" and version 1 with your model)
-model_name = "Gradient Boosting Regressor"
-model_version = 1
-model_uri = f"models:/{model_name}/{model_version}"
+model_uri = "mlruns/best_model"
 model = mlflow.sklearn.load_model(model_uri)
 
 

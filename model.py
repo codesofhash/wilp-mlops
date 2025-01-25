@@ -1,15 +1,24 @@
-import pandas as pd
-import mlflow
-import mlflow.sklearn
-from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.linear_model import LinearRegression, Ridge, Lasso
-from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
-from sklearn.metrics import mean_squared_error
+import shutil
 from datetime import datetime
-from mlflow.models import infer_signature
+from pathlib import Path
 
-# Set the MLflow tracking URI
-# mlflow.set_tracking_uri('http://127.0.0.1:5000/')
+import mlflow.sklearn
+import pandas as pd
+from mlflow.models import infer_signature
+from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
+from sklearn.linear_model import LinearRegression, Ridge, Lasso
+from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import train_test_split, GridSearchCV
+
+dir_path = Path('mlruns/best_model')
+if dir_path.exists() and dir_path.is_dir():
+    for child in dir_path.iterdir():
+        if child.is_file():
+            child.unlink()
+        else:
+            shutil.rmtree(child)
+
+    dir_path.rmdir()
 
 # Load the dataset
 dataset_name = "california_housing.csv"
@@ -70,6 +79,7 @@ with mlflow.start_run(run_name=run_name):
     best_model_name = None
     best_model = None
     best_mse = float("inf")
+    best_model_uri = None
 
     for model_name, model in models.items():
         print(f"Training model: {model_name}")
@@ -110,6 +120,7 @@ with mlflow.start_run(run_name=run_name):
             best_model_name = model_name
             best_model = best_model_temp
             best_mse = mse
+            best_model_uri = f"runs:/{mlflow.active_run().info.run_id}/model"
 
     print(f"Best Model: {best_model_name} with MSE: {best_mse}")
 
@@ -121,11 +132,14 @@ with mlflow.start_run(run_name=run_name):
     mlflow.sklearn.log_model(best_model, "model", input_example=input_example, signature=signature)
 
     # Register the best model
-    model_uri = f"runs:/{mlflow.active_run().info.run_id}/model"
+    print(f"Model URI: {best_model_uri}")
     print(f"Registering {best_model_name} model...")
 
     # Register the model in the Model Registry
-    mlflow.register_model(model_uri, best_model_name)
+    mlflow.register_model(best_model_uri, best_model_name)
+
+    # Saving the best model into a seperate dir
+    mlflow.sklearn.save_model(best_model, "mlruns/best_model")
 
     # Wait for the model version to be created
     client = mlflow.tracking.MlflowClient()
